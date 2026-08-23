@@ -115,6 +115,7 @@ jobs:
           set -eu
           mkdir -p generated
           cd src
+          IDRIS2_DATA="/tmp/Idric/support" \
           IDRIS2_PATH="/tmp/Idric/libs/prelude/build/ttc:/tmp/Idric/libs/base/build/ttc" \
             /tmp/Idric/build/exec/idris2 \
             --cg javascript \
