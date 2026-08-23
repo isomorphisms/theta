@@ -119,7 +119,8 @@ jobs:
             /tmp/Idric/build/exec/idris2 \
             --cg javascript \
             --directive compact \
-            -o ../generated/theta-edric.js \
+            --output-dir ../generated \
+            -o theta-edric.js \
             BrowserMain.idric
 
       - uses: actions/upload-artifact@v4
