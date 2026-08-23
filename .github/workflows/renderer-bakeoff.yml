@@ -7,11 +7,14 @@ on:
     paths:
       - 'src/**'
       - 'backends/**'
+      - 'android/**'
+      - 'scripts/**'
+      - 'package.json'
       - 'docs/renderer-bakeoff.md'
       - '.github/workflows/renderer-bakeoff.yml'
 
 jobs:
-  source-check:
+  phone-bakeoff:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +34,7 @@ jobs:
         shell: sh
         run: |
           set -eu
-          for source in backends/web/*.js; do
+          for source in backends/web/*.js scripts/*.mjs; do
             node --check "$source"
           done
 
@@ -45,8 +48,48 @@ jobs:
           export PATH="$PWD/.tools/bin:$PATH"
           ./edric bootstrap
 
-      - name: Check theta Edric modules
+      - name: Check shared Edric core
         shell: sh
         run: |
           set -eu
           /tmp/Idric/build/exec/idris2 -i src --check src/Main.idric
+
+      - name: Compile Edric phone runtime to browser JavaScript
+        shell: sh
+        run: |
+          set -eu
+          mkdir -p android/app/src/main/assets
+          /tmp/Idric/build/exec/idris2 \
+            --cg javascript \
+            --directive compact \
+            -i src \
+            -o android/app/src/main/assets/theta-edric.js \
+            src/BrowserMain.idric
+
+      - name: Bundle renderer libraries
+        shell: sh
+        run: |
+          set -eu
+          npm install --no-audit --no-fund
+          npm run bundle
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Build Android bakeoff APK
+        shell: sh
+        run: |
+          set -eu
+          gradle -p android :app:assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: theta-renderer-bakeoff-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

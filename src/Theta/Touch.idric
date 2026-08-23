@@ -1,0 +1,57 @@
+module Theta.Touch
+
+import Theta.Model
+import Theta.Interaction
+
+%default total
+
+public export
+choice touch_state one_of
+  no_touch
+  one_touch Scalar Scalar
+  two_touch Scalar Scalar Scalar
+
+public export
+initial_touch : touch_state
+initial_touch = no_touch
+
+separation : Scalar → Scalar → Scalar → Scalar → Scalar
+separation first_x first_y second_x second_y =
+  sqrt ((second_x - first_x) * (second_x - first_x)
+      + (second_y - first_y) * (second_y - first_y))
+
+midpoint : Scalar → Scalar → Scalar → Scalar → (Scalar, Scalar)
+midpoint first_x first_y second_x second_y =
+  ((first_x + second_x) / 2.0, (first_y + second_y) / 2.0)
+
+state_for : Int32 → Scalar → Scalar → Scalar → Scalar → touch_state
+state_for count first_x first_y second_x second_y =
+  if count <= 0 then no_touch
+  else if count == 1 then one_touch first_x first_y
+  else let (center_x, center_y) = midpoint first_x first_y second_x second_y
+           distance = separation first_x first_y second_x second_y
+        in two_touch center_x center_y distance
+
+public export
+begin_touch : Int32 → Scalar → Scalar → Scalar → Scalar → touch_state
+begin_touch = state_for
+
+public export
+move_touch : touch_state → Int32 → Scalar → Scalar → Scalar → Scalar → (touch_state, List gesture)
+move_touch previous count first_x first_y second_x second_y =
+  case (previous, count) of
+    (one_touch old_x old_y, 1) =>
+      let next = one_touch first_x first_y
+          horizontal = 2.8 * (first_x - old_x)
+          vertical = 2.8 * (first_y - old_y)
+       in (next, [rotate_view horizontal vertical])
+    (two_touch old_x old_y old_distance, 2) =>
+      let (center_x, center_y) = midpoint first_x first_y second_x second_y
+          distance = max 0.02 (separation first_x first_y second_x second_y)
+          zoom = old_distance / distance
+          next = two_touch center_x center_y distance
+       in (next,
+           [ pan_view (center_x - old_x) (center_y - old_y)
+           , zoom_view zoom
+           ])
+    _ => (state_for count first_x first_y second_x second_y, [])

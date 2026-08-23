@@ -1,5 +1,6 @@
 module Theta.Surface
 
+import Data.List
 import Theta.Model
 import Theta.Math
 

@@ -1,0 +1,170 @@
+module BrowserMain
+
+import Data.IORef
+import Data.List
+import Theta.Model
+import Theta.Interaction
+import Theta.Touch
+import Theta.Surface
+
+%default total
+
+record Runtime where
+  constructor Running
+  parameters : ThetaParameters
+  camera : Camera
+  touch : touch_state
+
+comma_separated : List String → String
+comma_separated [] = ""
+comma_separated (first :: rest) =
+  concat (first :: map (\value => "," ++ value) rest)
+
+positions_json : List Vertex → String
+positions_json values = comma_separated $ concatMap fields values
+  where
+    fields : Vertex → List String
+    fields value = [show (x value), show (y value), show (z value)]
+
+colors_json : List Vertex → String
+colors_json values = comma_separated $ concatMap fields values
+  where
+    fields : Vertex → List String
+    fields value =
+      let shade = color_value value
+       in [show (red shade), show (green shade), show (blue shade)]
+
+indices_json : List Triangle → String
+indices_json values = comma_separated $ concatMap fields values
+  where
+    fields : Triangle → List String
+    fields value = [show (first value), show (second value), show (third value)]
+
+frame_json : SurfaceFrame → String
+frame_json value = concat
+  [ "{\"columns\":"
+  , show (columns value)
+  , ",\"rows\":"
+  , show (rows value)
+  , ",\"positions\":["
+  , positions_json (vertices value)
+  , "],\"colors\":["
+  , colors_json (vertices value)
+  , "],\"indices\":["
+  , indices_json (triangles value)
+  , "]}"
+  ]
+
+camera_json : Camera → String
+camera_json value = concat
+  [ "{\"yaw\":"
+  , show (yaw value)
+  , ",\"pitch\":"
+  , show (pitch value)
+  , ",\"distance\":"
+  , show (distance value)
+  , ",\"panX\":"
+  , show (pan_x value)
+  , ",\"panY\":"
+  , show (pan_y value)
+  , "}"
+  ]
+
+%foreign "browser:lambda:payload=>window.thetaBakeoff.receiveFrame(payload)"
+prim__send_frame : String → PrimIO ()
+
+%foreign "browser:lambda:payload=>window.thetaBakeoff.receiveCamera(payload)"
+prim__send_camera : String → PrimIO ()
+
+%foreign "browser:lambda:(touch,control)=>window.thetaBakeoff.installEdric((kind,time,count,x1,y1,x2,y2)=>touch(kind,time,count,x1,y1,x2,y2)(),(phase,name,value)=>control(phase,name,value)())"
+prim__install_handlers :
+  (String → Double → Int32 → Double → Double → Double → Double → PrimIO ()) →
+  (String → String → Double → PrimIO ()) →
+  PrimIO ()
+
+send_frame : SurfaceFrame → IO ()
+send_frame value = primIO $ prim__send_frame (frame_json value)
+
+send_camera : Camera → IO ()
+send_camera value = primIO $ prim__send_camera (camera_json value)
+
+emit_surface : interaction_quality → ThetaParameters → IO ()
+emit_surface quality settings = send_frame (sample_surface quality settings)
+
+apply_gestures : List gesture → Camera → Camera
+apply_gestures events starting =
+  foldl (\current, event => apply_gesture event current) starting events
+
+handle_touch :
+  IORef Runtime →
+  String → Double → Int32 → Double → Double → Double → Double →
+  IO ()
+handle_touch state kind timestamp count first_x first_y second_x second_y = do
+  current ← readIORef state
+  if kind == "down"
+    then writeIORef state $ Running
+      (parameters current)
+      (camera current)
+      (begin_touch count first_x first_y second_x second_y)
+    else if kind == "move"
+      then do
+        let (next_touch, events) =
+              move_touch (touch current) count first_x first_y second_x second_y
+        let next_camera = apply_gestures events (camera current)
+        writeIORef state $ Running (parameters current) next_camera next_touch
+        send_camera next_camera
+      else writeIORef state $ Running
+        (parameters current)
+        (camera current)
+        (begin_touch count first_x first_y second_x second_y)
+
+height_choice : Double → height_mode
+height_choice value =
+  if value < 0.5 then modulus_height
+  else if value < 1.5 then logarithmic_height
+  else if value < 2.5 then real_height
+  else imaginary_height
+
+color_choice : Double → color_mode
+color_choice value =
+  if value < 0.5 then wegert_color
+  else if value < 1.5 then phase_color
+  else height_color
+
+named_control : String → Double → ThetaParameters → ThetaParameters
+named_control "tau_real" value = apply_control (change_tau_real value)
+named_control "tau_imaginary" value = apply_control (change_tau_imaginary value)
+named_control "alpha" value = apply_control (change_alpha value)
+named_control "beta" value = apply_control (change_beta value)
+named_control "height" value = apply_control (select_height (height_choice value))
+named_control "color" value = apply_control (select_color (color_choice value))
+named_control "reset_theta" value = apply_control reset_theta
+named_control _ value = id
+
+handle_control : IORef Runtime → String → String → Double → IO ()
+handle_control state phase name value = do
+  current ← readIORef state
+  if name == "reset_camera"
+    then do
+      let next_camera = apply_gesture reset_view (camera current)
+      writeIORef state $ Running (parameters current) next_camera (touch current)
+      send_camera next_camera
+    else do
+      let next_parameters = named_control name value (parameters current)
+      let quality = if phase == "input" then touching else settled
+      writeIORef state $ Running next_parameters (camera current) (touch current)
+      emit_surface quality next_parameters
+
+install_handlers : IORef Runtime → IO ()
+install_handlers state =
+  primIO $ prim__install_handlers
+    (\kind, timestamp, count, first_x, first_y, second_x, second_y =>
+      toPrim $ handle_touch state kind timestamp count first_x first_y second_x second_y)
+    (\phase, name, value => toPrim $ handle_control state phase name value)
+
+main : IO ()
+main = do
+  state ← newIORef (Running default_theta default_camera initial_touch)
+  install_handlers state
+  send_camera default_camera
+  emit_surface settled default_theta
