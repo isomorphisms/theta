@@ -20,8 +20,8 @@ export function cameraEye(camera) {
   const horizontal = camera.distance * Math.cos(camera.pitch);
   return {
     x: camera.panX + horizontal * Math.sin(camera.yaw),
-    y: camera.panY + camera.distance * Math.sin(camera.pitch),
-    z: horizontal * Math.cos(camera.yaw)
+    y: camera.panY + horizontal * Math.cos(camera.yaw),
+    z: camera.distance * Math.sin(camera.pitch)
   };
 }
 
