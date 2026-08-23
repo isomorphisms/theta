@@ -9,8 +9,8 @@ Scalar : Type
 Scalar = Double
 
 public export
-record complex_value where
-  constructor complex
+record ComplexValue where
+  constructor Complex
   real : Scalar
   imaginary : Scalar
 
@@ -38,8 +38,8 @@ choice interaction_quality one_of
   settled
 
 public export
-record theta_parameters where
-  constructor theta_settings
+record ThetaParameters where
+  constructor ThetaSettings
   tau_real : Scalar
   tau_imaginary : Scalar
   alpha : Scalar
@@ -48,8 +48,8 @@ record theta_parameters where
   color : color_mode
 
 public export
-default_theta : theta_parameters
-default_theta = theta_settings 0.0 1.0 0.0 0.0 modulus_height wegert_color
+default_theta : ThetaParameters
+default_theta = ThetaSettings 0.0 1.0 0.0 0.0 modulus_height wegert_color
 
 public export
 resolution : interaction_quality → Nat
@@ -57,40 +57,40 @@ resolution touching = 48
 resolution settled = 144
 
 public export
-record rgb where
-  constructor rgb_color
+record RGB where
+  constructor RGBColor
   red : Scalar
   green : Scalar
   blue : Scalar
 
 public export
-record vertex where
-  constructor surface_vertex
+record Vertex where
+  constructor SurfaceVertex
   x : Scalar
   y : Scalar
   z : Scalar
   magnitude : Scalar
   phase : Scalar
-  color_value : rgb
+  color_value : RGB
 
 public export
-record triangle where
-  constructor surface_triangle
+record Triangle where
+  constructor SurfaceTriangle
   first : Nat
   second : Nat
   third : Nat
 
 public export
-record surface_frame where
-  constructor frame
+record SurfaceFrame where
+  constructor Frame
   columns : Nat
   rows : Nat
-  vertices : List vertex
-  triangles : List triangle
+  vertices : List Vertex
+  triangles : List Triangle
 
 public export
-record camera where
-  constructor camera_state
+record Camera where
+  constructor CameraState
   yaw : Scalar
   pitch : Scalar
   distance : Scalar
@@ -98,11 +98,11 @@ record camera where
   pan_y : Scalar
 
 public export
-default_camera : camera
-default_camera = camera_state 0.65 0.8 3.25 0.0 0.0
+default_camera : Camera
+default_camera = CameraState 0.65 0.8 3.25 0.0 0.0
 
 choice render_command one_of
-  upload_surface surface_frame
-  move_camera camera
+  upload_surface SurfaceFrame
+  move_camera Camera
   resize_view Nat Nat
   present_frame
