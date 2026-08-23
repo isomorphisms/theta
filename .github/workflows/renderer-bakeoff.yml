@@ -14,7 +14,7 @@ on:
       - '.github/workflows/renderer-bakeoff.yml'
 
 jobs:
-  phone-bakeoff:
+  source-boundaries:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +38,59 @@ jobs:
             node --check "$source"
           done
 
+  web-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bundle renderer libraries
+        shell: sh
+        run: |
+          set -eu
+          npm install --no-audit --no-fund
+          npm run bundle
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: theta-bakeoff-web-assets
+          path: android/app/src/main/assets/bakeoff.js
+          if-no-files-found: error
+
+  android-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add temporary generated assets
+        shell: sh
+        run: |
+          set -eu
+          mkdir -p android/app/src/main/assets
+          printf '%s\n' 'window.thetaBakeoff = window.thetaBakeoff || {};' \
+            > android/app/src/main/assets/bakeoff.js
+          printf '%s\n' '// Edriç runtime supplied by the full build.' \
+            > android/app/src/main/assets/theta-edric.js
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Compile Android host and native renderer
+        shell: sh
+        run: |
+          set -eu
+          gradle -p android :app:assembleDebug
+
+  edric-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Build current Edric compiler
         shell: sh
         run: |
@@ -58,20 +111,35 @@ jobs:
         shell: sh
         run: |
           set -eu
-          mkdir -p android/app/src/main/assets
+          mkdir -p generated
           /tmp/Idric/build/exec/idris2 \
             --cg javascript \
             --directive compact \
             -i src \
-            -o android/app/src/main/assets/theta-edric.js \
+            -o generated/theta-edric.js \
             src/BrowserMain.idric
 
-      - name: Bundle renderer libraries
-        shell: sh
-        run: |
-          set -eu
-          npm install --no-audit --no-fund
-          npm run bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: theta-bakeoff-edric-runtime
+          path: generated/theta-edric.js
+          if-no-files-found: error
+
+  phone-apk:
+    needs: [source-boundaries, web-assets, android-shell, edric-runtime]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: theta-bakeoff-web-assets
+          path: android/app/src/main/assets
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: theta-bakeoff-edric-runtime
+          path: android/app/src/main/assets
 
       - uses: actions/setup-java@v4
         with:
@@ -82,10 +150,12 @@ jobs:
         with:
           gradle-version: '9.5.0'
 
-      - name: Build Android bakeoff APK
+      - name: Build installable Android bakeoff
         shell: sh
         run: |
           set -eu
+          test -s android/app/src/main/assets/bakeoff.js
+          test -s android/app/src/main/assets/theta-edric.js
           gradle -p android :app:assembleDebug
 
       - uses: actions/upload-artifact@v4
