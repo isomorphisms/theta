@@ -1,0 +1,156 @@
+module Theta.Math
+
+import Theta.Model
+
+%default total
+
+public export
+pi : Scalar
+pi = 3.14159265358979323846
+
+public export
+two_pi : Scalar
+two_pi = 6.28318530717958647692
+
+zero_complex : ComplexValue
+zero_complex = Complex 0.0 0.0
+
+public export
+add_complex : ComplexValue → ComplexValue → ComplexValue
+add_complex left right =
+  Complex (real left + real right) (imaginary left + imaginary right)
+
+public export
+scale_complex : Scalar → ComplexValue → ComplexValue
+scale_complex amount value =
+  Complex (amount * real value) (amount * imaginary value)
+
+public export
+multiply_by_i : ComplexValue → ComplexValue
+multiply_by_i value = Complex (-imaginary value) (real value)
+
+public export
+complex_exp : ComplexValue → ComplexValue
+complex_exp value =
+  let radial = exp (real value)
+      angle = imaginary value
+   in Complex (radial * cos angle) (radial * sin angle)
+
+public export
+modulus : ComplexValue → Scalar
+modulus value = sqrt (real value * real value + imaginary value * imaginary value)
+
+public export
+argument : ComplexValue → Scalar
+argument value =
+  let horizontal = real value
+      vertical = imaginary value
+   in if horizontal > 0.0 then atan (vertical / horizontal)
+      else if horizontal < 0.0 && vertical >= 0.0 then atan (vertical / horizontal) + pi
+      else if horizontal < 0.0 then atan (vertical / horizontal) - pi
+      else if vertical > 0.0 then pi / 2.0
+      else if vertical < 0.0 then -pi / 2.0
+      else 0.0
+
+nat_indices_from : Nat → Nat → List Nat
+nat_indices_from current Z = []
+nat_indices_from current (S remaining) = current :: nat_indices_from (S current) remaining
+
+nat_indices : Nat → List Nat
+nat_indices count = nat_indices_from 0 count
+
+term_indices : Nat → List Int
+term_indices terms =
+  let width = S (2 * terms)
+   in map (\offset => cast offset - cast terms) (nat_indices width)
+
+public export
+theta_term : ThetaParameters → ComplexValue → Int → ComplexValue
+theta_term settings point index =
+  let shifted = cast index + alpha settings
+      tau_value = Complex (tau_real settings) (tau_imaginary settings)
+      shifted_point = add_complex point (Complex (beta settings) 0.0)
+      quadratic = scale_complex (pi * shifted * shifted) (multiply_by_i tau_value)
+      linear = scale_complex (two_pi * shifted) (multiply_by_i shifted_point)
+   in complex_exp (add_complex quadratic linear)
+
+public export
+theta_value : Nat → ThetaParameters → ComplexValue → ComplexValue
+theta_value terms settings point =
+  foldl add_complex zero_complex
+    (map (theta_term settings point) (term_indices terms))
+
+clamp01 : Scalar → Scalar
+clamp01 value = max 0.0 (min 1.0 value)
+
+positive_fraction : Scalar → Scalar
+positive_fraction value = value - cast (floor value)
+
+positive_power : Scalar → Scalar → Scalar
+positive_power value exponent =
+  if value <= 0.0 then 0.0 else exp (log value * exponent)
+
+srgb_component : Scalar → Scalar
+srgb_component linear_value =
+  let value = max linear_value 0.0
+   in if value <= 0.0031308
+      then 12.92 * value
+      else 1.055 * positive_power value (1.0 / 2.4) - 0.055
+
+public export
+hcl_to_rgb : Scalar → Scalar → Scalar → RGB
+hcl_to_rgb hue_degrees chroma lightness =
+  let hue = hue_degrees * pi / 180.0
+      u_star = chroma * cos hue
+      v_star = chroma * sin hue
+      white_u_prime = 0.19783982482140777
+      white_v_prime = 0.46833630293240974
+      y = if lightness > 8.0
+          then let scaled = (lightness + 16.0) / 116.0 in scaled * scaled * scaled
+          else lightness / 903.2962962962963
+      u_prime = u_star / (13.0 * lightness) + white_u_prime
+      v_prime = v_star / (13.0 * lightness) + white_v_prime
+      x_value = (9.0 * y * u_prime) / (4.0 * v_prime)
+      z_value = y * (12.0 - 3.0 * u_prime - 20.0 * v_prime) / (4.0 * v_prime)
+      linear_red = 3.2404542 * x_value - 1.5371385 * y - 0.4985314 * z_value
+      linear_green = -0.9692660 * x_value + 1.8760108 * y + 0.0415560 * z_value
+      linear_blue = 0.0556434 * x_value - 0.2040259 * y + 1.0572252 * z_value
+   in RGBColor
+        (clamp01 (srgb_component linear_red))
+        (clamp01 (srgb_component linear_green))
+        (clamp01 (srgb_component linear_blue))
+
+public export
+wegert_rgb : ComplexValue → RGB
+wegert_rgb value =
+  let phase_value = argument value
+      magnitude_value = max (modulus value) 1.0e-12
+      hue_degrees = 360.0 * positive_fraction (phase_value / two_pi)
+      log_modulus_band = positive_fraction (log magnitude_value / 2.30258509299404568402)
+      lightness = 66.0
+                + 4.0 * log_modulus_band
+                + 3.0 * positive_fraction (hue_degrees / 100.0)
+   in hcl_to_rgb hue_degrees 45.0 lightness
+
+phase_rgb : ComplexValue → RGB
+phase_rgb value =
+  let hue_degrees = 360.0 * positive_fraction (argument value / two_pi)
+   in hcl_to_rgb hue_degrees 45.0 70.0
+
+gray_rgb : ComplexValue → RGB
+gray_rgb value =
+  let amount = modulus value / (1.0 + modulus value)
+   in RGBColor amount amount amount
+
+public export
+color_for : color_mode → ComplexValue → RGB
+color_for wegert_color = wegert_rgb
+color_for phase_color = phase_rgb
+color_for height_color = gray_rgb
+
+public export
+height_for : height_mode → ComplexValue → Scalar
+height_for modulus_height value = modulus value
+height_for logarithmic_height value = log (1.0 + modulus value)
+height_for real_height value = real value
+height_for imaginary_height value = imaginary value
