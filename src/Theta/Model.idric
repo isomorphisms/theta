@@ -14,17 +14,20 @@ record ComplexValue where
   real : Scalar
   imaginary : Scalar
 
+public export
 choice height_mode one_of
   modulus_height
   logarithmic_height
   real_height
   imaginary_height
 
+public export
 choice color_mode one_of
   wegert_color
   phase_color
   height_color
 
+public export
 choice renderer_name one_of
   three_js
   plotly_js
@@ -33,6 +36,7 @@ choice renderer_name one_of
   raw_webgl
   native_android
 
+public export
 choice interaction_quality one_of
   touching
   settled
@@ -101,6 +105,7 @@ public export
 default_camera : Camera
 default_camera = CameraState 0.65 0.8 3.25 0.0 0.0
 
+public export
 choice render_command one_of
   upload_surface SurfaceFrame
   move_camera Camera
