@@ -9,7 +9,6 @@
     "@babylonjs/core": "9.22.1",
     "@deck.gl/core": "9.3.10",
     "@deck.gl/mesh-layers": "9.3.10",
-    "@luma.gl/engine": "9.3.6",
     "plotly.js-dist-min": "3.7.0",
     "three": "0.185.1"
   },
