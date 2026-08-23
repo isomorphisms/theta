@@ -3,7 +3,6 @@ import Plotly from 'plotly.js-dist-min';
 import * as BABYLON from '@babylonjs/core/Legacy/legacy';
 import { Deck, OrbitView, COORDINATE_SYSTEM } from '@deck.gl/core';
 import { SimpleMeshLayer } from '@deck.gl/mesh-layers';
-import { MeshGeometry } from '@luma.gl/engine';
 
 import { createThreeAdapter } from './three.js';
 import { createPlotlyAdapter } from './plotly.js';
@@ -79,7 +78,7 @@ function createAdapter(name) {
       return createBabylonAdapter(BABYLON, makeCanvas());
     case 'deck_gl':
       return createDeckAdapter(
-        { Deck, OrbitView, SimpleMeshLayer, MeshGeometry, COORDINATE_SYSTEM },
+        { Deck, OrbitView, SimpleMeshLayer, COORDINATE_SYSTEM },
         makeCanvas()
       );
     case 'raw_webgl':
