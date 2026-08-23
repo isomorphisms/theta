@@ -11,7 +11,7 @@ import Theta.Surface
 
 record Runtime where
   constructor Running
-  parameters : ThetaParameters
+  theta_parameters : ThetaParameters
   camera : Camera
   touch : touch_state
 
@@ -103,7 +103,7 @@ handle_touch state kind timestamp count first_x first_y second_x second_y = do
   current ← readIORef state
   if kind == "down"
     then writeIORef state $ Running
-      (parameters current)
+      (theta_parameters current)
       (camera current)
       (begin_touch count first_x first_y second_x second_y)
     else if kind == "move"
@@ -111,10 +111,10 @@ handle_touch state kind timestamp count first_x first_y second_x second_y = do
         let (next_touch, events) =
               move_touch (touch current) count first_x first_y second_x second_y
         let next_camera = apply_gestures events (camera current)
-        writeIORef state $ Running (parameters current) next_camera next_touch
+        writeIORef state $ Running (theta_parameters current) next_camera next_touch
         send_camera next_camera
       else writeIORef state $ Running
-        (parameters current)
+        (theta_parameters current)
         (camera current)
         (begin_touch count first_x first_y second_x second_y)
 
@@ -147,10 +147,10 @@ handle_control state phase name value = do
   if name == "reset_camera"
     then do
       let next_camera = apply_gesture reset_view (camera current)
-      writeIORef state $ Running (parameters current) next_camera (touch current)
+      writeIORef state $ Running (theta_parameters current) next_camera (touch current)
       send_camera next_camera
     else do
-      let next_parameters = named_control name value (parameters current)
+      let next_parameters = named_control name value (theta_parameters current)
       let quality = if phase == "input" then touching else settled
       writeIORef state $ Running next_parameters (camera current) (touch current)
       emit_surface quality next_parameters
