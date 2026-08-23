@@ -14,7 +14,9 @@ android {
         versionName = "0.0.1"
     }
 
-    sourceSets.getByName("main").java.srcDir("../../backends/native-android")
+    sourceSets.named("main") {
+        kotlin.directories += "../../backends/native-android"
+    }
 
     buildTypes {
         getByName("debug") {
