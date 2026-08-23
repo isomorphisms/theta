@@ -1,0 +1,51 @@
+name: renderer bakeoff
+
+on:
+  push:
+    branches: [renderer-bakeoff]
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'backends/**'
+      - 'docs/renderer-bakeoff.md'
+      - '.github/workflows/renderer-bakeoff.yml'
+
+jobs:
+  source-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse Python source in the bakeoff
+        shell: sh
+        run: |
+          set -eu
+          python_files="$(find . -path ./.git -prune -o -name '*.py' -print)"
+          if [ -n "$python_files" ]; then
+            printf '%s\n' 'Python source is not part of this renderer bakeoff:' >&2
+            printf '%s\n' "$python_files" >&2
+            exit 1
+          fi
+
+      - name: Check JavaScript adapter syntax
+        shell: sh
+        run: |
+          set -eu
+          for source in backends/web/*.js; do
+            node --check "$source"
+          done
+
+      - name: Build current Edric compiler
+        shell: sh
+        run: |
+          set -eu
+          git clone --depth 1 https://github.com/isomorphisms/Idric.git /tmp/Idric
+          cd /tmp/Idric
+          ./edric scheme
+          ./edric bootstrap
+
+      - name: Check theta Edric modules
+        shell: sh
+        run: |
+          set -eu
+          /tmp/Idric/build/exec/idris2 -i src --check src/Main.idric
