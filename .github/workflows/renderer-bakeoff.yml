@@ -106,7 +106,8 @@ jobs:
         run: |
           set -eu
           cd src
-          /tmp/Idric/build/exec/idris2 --check Main.idric
+          IDRIS2_PATH="/tmp/Idric/libs/prelude/build/ttc:/tmp/Idric/libs/base/build/ttc" \
+            /tmp/Idric/build/exec/idris2 --check Main.idric
 
       - name: Compile Edric phone runtime to browser JavaScript
         shell: sh
@@ -114,7 +115,8 @@ jobs:
           set -eu
           mkdir -p generated
           cd src
-          /tmp/Idric/build/exec/idris2 \
+          IDRIS2_PATH="/tmp/Idric/libs/prelude/build/ttc:/tmp/Idric/libs/base/build/ttc" \
+            /tmp/Idric/build/exec/idris2 \
             --cg javascript \
             --directive compact \
             -o ../generated/theta-edric.js \
