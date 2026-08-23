@@ -4,12 +4,14 @@ import Theta.Model
 
 %default total
 
+public export
 choice gesture one_of
   rotate_view Scalar Scalar
   zoom_view Scalar
   pan_view Scalar Scalar
   reset_view
 
+public export
 choice theta_control one_of
   change_tau_real Scalar
   change_tau_imaginary Scalar
