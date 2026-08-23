@@ -13,11 +13,15 @@ indices_from current (S remaining) = current :: indices_from (S current) remaini
 indices : Nat → List Nat
 indices count = indices_from 0 count
 
+nat_predecessor : Nat → Nat
+nat_predecessor Z = Z
+nat_predecessor (S value) = value
+
 coordinate : Nat → Nat → Scalar
 coordinate count index =
   if count <= 1
   then 0.0
-  else -0.5 + cast index / cast (count - 1)
+  else -0.5 + cast index / cast (nat_predecessor count)
 
 terms_for : interaction_quality → Nat
 terms_for touching = 6
@@ -61,13 +65,13 @@ cell_triangles count row column =
 
 row_triangles : Nat → Nat → List Triangle
 row_triangles count row =
-  concatMap (cell_triangles count row) (indices (count - 1))
+  concatMap (cell_triangles count row) (indices (nat_predecessor count))
 
 all_triangles : Nat → List Triangle
 all_triangles count =
   if count <= 1
   then []
-  else concatMap (row_triangles count) (indices (count - 1))
+  else concatMap (row_triangles count) (indices (nat_predecessor count))
 
 public export
 sample_surface : interaction_quality → ThetaParameters → SurfaceFrame
