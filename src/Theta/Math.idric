@@ -46,10 +46,10 @@ argument value =
   let horizontal = real value
       vertical = imaginary value
    in if horizontal > 0.0 then atan (vertical / horizontal)
-      else if horizontal < 0.0 && vertical >= 0.0 then atan (vertical / horizontal) + pi
-      else if horizontal < 0.0 then atan (vertical / horizontal) - pi
-      else if vertical > 0.0 then pi / 2.0
-      else if vertical < 0.0 then -pi / 2.0
+      else if horizontal < 0.0 && vertical >= 0.0 then atan (vertical / horizontal) + Theta.Math.pi
+      else if horizontal < 0.0 then atan (vertical / horizontal) - Theta.Math.pi
+      else if vertical > 0.0 then Theta.Math.pi / 2.0
+      else if vertical < 0.0 then -Theta.Math.pi / 2.0
       else 0.0
 
 nat_indices_from : Nat → Nat → List Nat
@@ -70,7 +70,7 @@ theta_term settings point index =
   let shifted = cast index + alpha settings
       tau_value = Complex (tau_real settings) (tau_imaginary settings)
       shifted_point = add_complex point (Complex (beta settings) 0.0)
-      quadratic = scale_complex (pi * shifted * shifted) (multiply_by_i tau_value)
+      quadratic = scale_complex (Theta.Math.pi * shifted * shifted) (multiply_by_i tau_value)
       linear = scale_complex (two_pi * shifted) (multiply_by_i shifted_point)
    in complex_exp (add_complex quadratic linear)
 
@@ -100,7 +100,7 @@ srgb_component linear_value =
 public export
 hcl_to_rgb : Scalar → Scalar → Scalar → RGB
 hcl_to_rgb hue_degrees chroma lightness =
-  let hue = hue_degrees * pi / 180.0
+  let hue = hue_degrees * Theta.Math.pi / 180.0
       u_star = chroma * cos hue
       v_star = chroma * sin hue
       white_u_prime = 0.19783982482140777
