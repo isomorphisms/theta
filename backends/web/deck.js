@@ -19,7 +19,6 @@ export function createDeckAdapter(api, canvas) {
     Deck,
     OrbitView,
     SimpleMeshLayer,
-    MeshGeometry,
     COORDINATE_SYSTEM
   } = api;
 
@@ -38,14 +37,13 @@ export function createDeckAdapter(api, canvas) {
   });
 
   function upload(frame) {
-    mesh = new MeshGeometry({
-      id: 'theta-surface',
+    mesh = {
       attributes: {
         POSITION: { size: 3, value: frame.positions },
         COLOR_0: { size: 4, value: rgbaColors(frame.colors) }
       },
       indices: { size: 1, value: frame.indices }
-    });
+    };
   }
 
   function viewState() {
