@@ -1,0 +1,12 @@
+module Main
+
+import Theta.Model
+import Theta.Surface
+
+main : IO ()
+main = do
+  let touching_frame = sample_surface touching default_theta
+  let settled_frame = sample_surface settled default_theta
+  putStrLn "theta renderer bakeoff"
+  putStrLn ("touching vertices: " ++ show (length (vertices touching_frame)))
+  putStrLn ("settled vertices: " ++ show (length (vertices settled_frame)))
