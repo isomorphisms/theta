@@ -5,14 +5,14 @@ module Theta.Model
 -- Current Edriç inherits Idris 2's host floating primitive here. Renderer
 -- adapters must pack geometry and colors into 32-bit float buffers on-device.
 public export
-scalar : Type
-scalar = Double
+Scalar : Type
+Scalar = Double
 
 public export
 record complex_value where
   constructor complex
-  real : scalar
-  imaginary : scalar
+  real : Scalar
+  imaginary : Scalar
 
 choice height_mode one_of
   modulus_height
@@ -40,10 +40,10 @@ choice interaction_quality one_of
 public export
 record theta_parameters where
   constructor theta_settings
-  tau_real : scalar
-  tau_imaginary : scalar
-  alpha : scalar
-  beta : scalar
+  tau_real : Scalar
+  tau_imaginary : Scalar
+  alpha : Scalar
+  beta : Scalar
   height : height_mode
   color : color_mode
 
@@ -59,18 +59,18 @@ resolution settled = 144
 public export
 record rgb where
   constructor rgb_color
-  red : scalar
-  green : scalar
-  blue : scalar
+  red : Scalar
+  green : Scalar
+  blue : Scalar
 
 public export
 record vertex where
   constructor surface_vertex
-  x : scalar
-  y : scalar
-  z : scalar
-  magnitude : scalar
-  phase : scalar
+  x : Scalar
+  y : Scalar
+  z : Scalar
+  magnitude : Scalar
+  phase : Scalar
   color_value : rgb
 
 public export
@@ -91,11 +91,11 @@ record surface_frame where
 public export
 record camera where
   constructor camera_state
-  yaw : scalar
-  pitch : scalar
-  distance : scalar
-  pan_x : scalar
-  pan_y : scalar
+  yaw : Scalar
+  pitch : Scalar
+  distance : Scalar
+  pan_x : Scalar
+  pan_y : Scalar
 
 public export
 default_camera : camera
