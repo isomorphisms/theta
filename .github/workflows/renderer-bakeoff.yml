@@ -105,19 +105,20 @@ jobs:
         shell: sh
         run: |
           set -eu
-          /tmp/Idric/build/exec/idris2 -i src --check src/Main.idric
+          cd src
+          /tmp/Idric/build/exec/idris2 --check Main.idric
 
       - name: Compile Edric phone runtime to browser JavaScript
         shell: sh
         run: |
           set -eu
           mkdir -p generated
+          cd src
           /tmp/Idric/build/exec/idris2 \
             --cg javascript \
             --directive compact \
-            -i src \
-            -o generated/theta-edric.js \
-            src/BrowserMain.idric
+            -o ../generated/theta-edric.js \
+            BrowserMain.idric
 
       - uses: actions/upload-artifact@v4
         with:
