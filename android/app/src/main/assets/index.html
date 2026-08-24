@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <title>theta renderer bakeoff</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    html { background: transparent; }
+    body { background: #000; }
+    body.native-renderer { background: transparent; }
+    #graph { position: fixed; inset: 0; touch-action: none; background: #000; }
+    body.native-renderer #graph { background: transparent; }
+    .renderer-surface { display: block; width: 100%; height: 100%; }
+    #topbar { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; z-index: 10; display: flex; gap: 8px; align-items: center; pointer-events: none; }
+    #renderer-select, #metrics { pointer-events: auto; border: 0; border-radius: 14px; background: rgba(18,18,18,.78); color: #fff; padding: 9px 12px; font-size: 14px; }
+    #metrics { margin-left: auto; font-variant-numeric: tabular-nums; }
+    #theta-button { position: fixed; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 20; width: 54px; height: 54px; border: 0; border-radius: 27px; background: rgba(20,20,20,.86); color: #fff; font: 28px serif; }
+    #theta-sheet { position: fixed; z-index: 15; left: 0; right: 0; bottom: 0; padding: 16px 18px calc(82px + env(safe-area-inset-bottom)); background: rgba(12,12,12,.94); border-radius: 22px 22px 0 0; transform: translateY(110%); transition: transform 140ms ease-out; }
+    #theta-sheet.open { transform: translateY(0); }
+    .row { display: grid; grid-template-columns: 72px 1fr 54px; align-items: center; gap: 10px; min-height: 42px; }
+    .row select, .row input { width: 100%; }
+    .value { text-align: right; font-variant-numeric: tabular-nums; color: #bbb; }
+    .buttons { display: flex; gap: 10px; padding-top: 10px; }
+    .buttons button { flex: 1; min-height: 42px; border: 0; border-radius: 12px; background: #2a2a2a; color: #fff; }
+  </style>
+</head>
+<body>
+  <div id="graph" aria-label="interactive theta surface"></div>
+  <div id="topbar">
+    <select id="renderer-select" aria-label="renderer">
+      <option value="raw_webgl">raw WebGL</option>
+      <option value="three_js">Three.js</option>
+      <option value="plotly_js">Plotly.js</option>
+      <option value="babylon_js">Babylon.js</option>
+      <option value="deck_gl">deck.gl</option>
+      <option value="native_android">native Android</option>
+    </select>
+    <div id="metrics">loading</div>
+  </div>
+
+  <section id="theta-sheet" aria-label="theta controls">
+    <div class="row"><label for="tau-real">Re τ</label><input id="tau-real" data-control="tau_real" type="range" min="-1" max="1" step="0.01" value="0"><span class="value" data-value-for="tau_real">0.00</span></div>
+    <div class="row"><label for="tau-imag">Im τ</label><input id="tau-imag" data-control="tau_imaginary" type="range" min="0.15" max="2.5" step="0.01" value="1"><span class="value" data-value-for="tau_imaginary">1.00</span></div>
+    <div class="row"><label for="alpha">α</label><input id="alpha" data-control="alpha" type="range" min="0" max="1" step="0.01" value="0"><span class="value" data-value-for="alpha">0.00</span></div>
+    <div class="row"><label for="beta">β</label><input id="beta" data-control="beta" type="range" min="0" max="1" step="0.01" value="0"><span class="value" data-value-for="beta">0.00</span></div>
+    <div class="row"><label for="height">height</label><select id="height" data-control="height"><option>|θ|</option><option>log(1+|θ|)</option><option>Re θ</option><option>Im θ</option></select><span></span></div>
+    <div class="row"><label for="color">color</label><select id="color" data-control="color"><option>Wegert</option><option>phase</option><option>height</option></select><span></span></div>
+    <div class="buttons"><button data-command="reset_camera">reset view</button><button data-command="reset_theta">reset θ</button></div>
+  </section>
+  <button id="theta-button" aria-label="theta controls">θ</button>
+
+  <script src="bakeoff.js"></script>
+  <script src="theta-edric.js"></script>
+</body>
+</html>

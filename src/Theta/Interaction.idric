@@ -1,0 +1,72 @@
+module Theta.Interaction
+
+import Theta.Model
+
+%default total
+
+public export
+choice gesture one_of
+  rotate_view Scalar Scalar
+  zoom_view Scalar
+  pan_view Scalar Scalar
+  reset_view
+
+public export
+choice theta_control one_of
+  change_tau_real Scalar
+  change_tau_imaginary Scalar
+  change_alpha Scalar
+  change_beta Scalar
+  select_height height_mode
+  select_color color_mode
+  reset_theta
+
+clamp : Scalar → Scalar → Scalar → Scalar
+clamp lower upper value = max lower (min upper value)
+
+public export
+apply_gesture : gesture → Camera → Camera
+apply_gesture (rotate_view horizontal vertical) current =
+  CameraState
+    (yaw current + horizontal)
+    (clamp (-1.45) 1.45 (pitch current + vertical))
+    (distance current)
+    (pan_x current)
+    (pan_y current)
+apply_gesture (zoom_view scale) current =
+  CameraState
+    (yaw current)
+    (pitch current)
+    (clamp 0.6 12.0 (distance current * scale))
+    (pan_x current)
+    (pan_y current)
+apply_gesture (pan_view horizontal vertical) current =
+  CameraState
+    (yaw current)
+    (pitch current)
+    (distance current)
+    (pan_x current + horizontal)
+    (pan_y current + vertical)
+apply_gesture reset_view current = default_camera
+
+public export
+apply_control : theta_control → ThetaParameters → ThetaParameters
+apply_control (change_tau_real value) current =
+  ThetaSettings value (tau_imaginary current) (alpha current) (beta current)
+    (height current) (color current)
+apply_control (change_tau_imaginary value) current =
+  ThetaSettings (tau_real current) (max 0.15 value) (alpha current) (beta current)
+    (height current) (color current)
+apply_control (change_alpha value) current =
+  ThetaSettings (tau_real current) (tau_imaginary current) value (beta current)
+    (height current) (color current)
+apply_control (change_beta value) current =
+  ThetaSettings (tau_real current) (tau_imaginary current) (alpha current) value
+    (height current) (color current)
+apply_control (select_height value) current =
+  ThetaSettings (tau_real current) (tau_imaginary current) (alpha current) (beta current)
+    value (color current)
+apply_control (select_color value) current =
+  ThetaSettings (tau_real current) (tau_imaginary current) (alpha current) (beta current)
+    (height current) value
+apply_control reset_theta current = default_theta

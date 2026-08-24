@@ -1,0 +1,82 @@
+module Theta.Surface
+
+import Data.List
+import Theta.Model
+import Theta.Math
+
+%default total
+
+indices_from : Nat → Nat → List Nat
+indices_from current Z = []
+indices_from current (S remaining) = current :: indices_from (S current) remaining
+
+indices : Nat → List Nat
+indices count = indices_from 0 count
+
+nat_predecessor : Nat → Nat
+nat_predecessor Z = Z
+nat_predecessor (S value) = value
+
+coordinate : Nat → Nat → Scalar
+coordinate count index =
+  if count <= 1
+  then 0.0
+  else -0.5 + cast index / cast (nat_predecessor count)
+
+terms_for : interaction_quality → Nat
+terms_for touching = 6
+terms_for settled = 10
+
+sample_vertex : interaction_quality → ThetaParameters → Nat → Nat → Nat → Vertex
+sample_vertex quality settings count row column =
+  let lattice_x = coordinate count column
+      lattice_y = coordinate count row
+      point = Complex
+        (lattice_x + lattice_y * tau_real settings)
+        (lattice_y * tau_imaginary settings)
+      value = theta_value (terms_for quality) settings point
+      raw_height = height_for (height settings) value
+      display_height = 0.42 * raw_height
+   in SurfaceVertex
+        (real point)
+        (imaginary point)
+        display_height
+        (modulus value)
+        (argument value)
+        (color_for (color settings) value)
+
+row_vertices : interaction_quality → ThetaParameters → Nat → Nat → List Vertex
+row_vertices quality settings count row =
+  map (sample_vertex quality settings count row) (indices count)
+
+all_vertices : interaction_quality → ThetaParameters → Nat → List Vertex
+all_vertices quality settings count =
+  concatMap (row_vertices quality settings count) (indices count)
+
+cell_triangles : Nat → Nat → Nat → List Triangle
+cell_triangles count row column =
+  let top_left = row * count + column
+      top_right = top_left + 1
+      bottom_left = (row + 1) * count + column
+      bottom_right = bottom_left + 1
+   in [ SurfaceTriangle top_left bottom_left top_right
+      , SurfaceTriangle top_right bottom_left bottom_right
+      ]
+
+row_triangles : Nat → Nat → List Triangle
+row_triangles count row =
+  concatMap (cell_triangles count row) (indices (nat_predecessor count))
+
+all_triangles : Nat → List Triangle
+all_triangles count =
+  if count <= 1
+  then []
+  else concatMap (row_triangles count) (indices (nat_predecessor count))
+
+public export
+sample_surface : interaction_quality → ThetaParameters → SurfaceFrame
+sample_surface quality settings =
+  let count = resolution quality
+   in Frame count count
+        (all_vertices quality settings count)
+        (all_triangles count)

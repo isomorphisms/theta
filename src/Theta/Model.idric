@@ -1,0 +1,113 @@
+module Theta.Model
+
+%default total
+
+-- Current Edriç inherits Idris 2's host floating primitive here. Renderer
+-- adapters must pack geometry and colors into 32-bit float buffers on-device.
+public export
+Scalar : Type
+Scalar = Double
+
+public export
+record ComplexValue where
+  constructor Complex
+  real : Scalar
+  imaginary : Scalar
+
+public export
+choice height_mode one_of
+  modulus_height
+  logarithmic_height
+  real_height
+  imaginary_height
+
+public export
+choice color_mode one_of
+  wegert_color
+  phase_color
+  height_color
+
+public export
+choice renderer_name one_of
+  three_js
+  plotly_js
+  babylon_js
+  deck_gl
+  raw_webgl
+  native_android
+
+public export
+choice interaction_quality one_of
+  touching
+  settled
+
+public export
+record ThetaParameters where
+  constructor ThetaSettings
+  tau_real : Scalar
+  tau_imaginary : Scalar
+  alpha : Scalar
+  beta : Scalar
+  height : height_mode
+  color : color_mode
+
+public export
+default_theta : ThetaParameters
+default_theta = ThetaSettings 0.0 1.0 0.0 0.0 modulus_height wegert_color
+
+public export
+resolution : interaction_quality → Nat
+resolution touching = 48
+resolution settled = 144
+
+public export
+record RGB where
+  constructor RGBColor
+  red : Scalar
+  green : Scalar
+  blue : Scalar
+
+public export
+record Vertex where
+  constructor SurfaceVertex
+  x : Scalar
+  y : Scalar
+  z : Scalar
+  magnitude : Scalar
+  phase : Scalar
+  color_value : RGB
+
+public export
+record Triangle where
+  constructor SurfaceTriangle
+  first : Nat
+  second : Nat
+  third : Nat
+
+public export
+record SurfaceFrame where
+  constructor Frame
+  columns : Nat
+  rows : Nat
+  vertices : List Vertex
+  triangles : List Triangle
+
+public export
+record Camera where
+  constructor CameraState
+  yaw : Scalar
+  pitch : Scalar
+  distance : Scalar
+  pan_x : Scalar
+  pan_y : Scalar
+
+public export
+default_camera : Camera
+default_camera = CameraState 0.65 0.8 3.25 0.0 0.0
+
+public export
+choice render_command one_of
+  upload_surface SurfaceFrame
+  move_camera Camera
+  resize_view Nat Nat
+  present_frame

@@ -1,0 +1,170 @@
+name: renderer bakeoff
+
+on:
+  push:
+    branches: [renderer-bakeoff]
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'backends/**'
+      - 'android/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'docs/renderer-bakeoff.md'
+      - '.github/workflows/renderer-bakeoff.yml'
+
+jobs:
+  source-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse Python source in the bakeoff
+        shell: sh
+        run: |
+          set -eu
+          python_files="$(find . -path ./.git -prune -o -name '*.py' -print)"
+          if [ -n "$python_files" ]; then
+            printf '%s\n' 'Python source is not part of this renderer bakeoff:' >&2
+            printf '%s\n' "$python_files" >&2
+            exit 1
+          fi
+
+      - name: Check JavaScript adapter syntax
+        shell: sh
+        run: |
+          set -eu
+          for source in backends/web/*.js scripts/*.mjs; do
+            node --check "$source"
+          done
+
+  web-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bundle renderer libraries
+        shell: sh
+        run: |
+          set -eu
+          npm install --no-audit --no-fund
+          npm run bundle
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: theta-bakeoff-web-assets
+          path: android/app/src/main/assets/bakeoff.js
+          if-no-files-found: error
+
+  android-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add temporary generated assets
+        shell: sh
+        run: |
+          set -eu
+          mkdir -p android/app/src/main/assets
+          printf '%s\n' 'window.thetaBakeoff = window.thetaBakeoff || {};' \
+            > android/app/src/main/assets/bakeoff.js
+          printf '%s\n' '// Edriç runtime supplied by the full build.' \
+            > android/app/src/main/assets/theta-edric.js
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Compile Android host and native renderer
+        shell: sh
+        run: |
+          set -eu
+          gradle -p android :app:assembleDebug
+
+  edric-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build current Edric compiler
+        shell: sh
+        run: |
+          set -eu
+          git clone --depth 1 https://github.com/isomorphisms/Idric.git /tmp/Idric
+          cd /tmp/Idric
+          ./edric scheme
+          export PATH="$PWD/.tools/bin:$PATH"
+          ./edric bootstrap
+
+      - name: Check shared Edric core
+        shell: sh
+        run: |
+          set -eu
+          cd src
+          IDRIS2_PATH="/tmp/Idric/libs/prelude/build/ttc:/tmp/Idric/libs/base/build/ttc" \
+            /tmp/Idric/build/exec/idris2 --check Main.idric
+
+      - name: Compile Edric phone runtime to browser JavaScript
+        shell: sh
+        run: |
+          set -eu
+          mkdir -p generated
+          cd src
+          IDRIS2_DATA="/tmp/Idric/support" \
+          IDRIS2_PATH="/tmp/Idric/libs/prelude/build/ttc:/tmp/Idric/libs/base/build/ttc" \
+            /tmp/Idric/build/exec/idris2 \
+            --cg javascript \
+            --directive compact \
+            --output-dir ../generated \
+            -o theta-edric.js \
+            BrowserMain.idric
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: theta-bakeoff-edric-runtime
+          path: generated/theta-edric.js
+          if-no-files-found: error
+
+  phone-apk:
+    needs: [source-boundaries, web-assets, android-shell, edric-runtime]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: theta-bakeoff-web-assets
+          path: android/app/src/main/assets
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: theta-bakeoff-edric-runtime
+          path: android/app/src/main/assets
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Build installable Android bakeoff
+        shell: sh
+        run: |
+          set -eu
+          test -s android/app/src/main/assets/bakeoff.js
+          test -s android/app/src/main/assets/theta-edric.js
+          gradle -p android :app:assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: theta-renderer-bakeoff-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
